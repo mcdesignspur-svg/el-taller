@@ -161,6 +161,7 @@ export function StudioForm() {
   if (result) {
     return (
       <OutputDisplay
+        itemId={result.item.id}
         output={result.output}
         scheduled_date={result.item.scheduled_date}
         onReset={reset}

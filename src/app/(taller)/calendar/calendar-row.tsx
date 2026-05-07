@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import type { ContentItem, ContentStatus } from '@/lib/types'
+import { OutputEditor } from '@/components/output-editor'
 import { deleteItem, setItemStatus } from './actions'
 
 const TYPE_LABELS: Record<ContentItem['type'], string> = {
@@ -85,19 +86,19 @@ export function CalendarRow({ item }: Props) {
           onClick={() => setOpen((v) => !v)}
           className="text-xs text-zinc-500 hover:text-zinc-900 px-2 py-1"
         >
-          {open ? 'Cerrar' : 'Ver'}
+          {open ? 'Cerrar' : 'Editar'}
         </button>
       </div>
 
       {open && (
         <div className="border-t border-zinc-200 px-4 py-4 space-y-4 bg-zinc-50/50">
           {item.output ? (
-            <OutputCompact output={item.output} />
+            <OutputEditor itemId={item.id} initialOutput={item.output} />
           ) : (
             <p className="text-sm text-zinc-500">Este item no tiene output AI.</p>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-2">
+          <div className="flex flex-wrap gap-2 pt-3 border-t border-zinc-200">
             {next && (
               <button
                 type="button"
@@ -121,102 +122,6 @@ export function CalendarRow({ item }: Props) {
           {error && <p className="text-xs text-red-600">{error}</p>}
         </div>
       )}
-    </div>
-  )
-}
-
-function OutputCompact({ output }: { output: NonNullable<ContentItem['output']> }) {
-  if (output.type === 'reel') {
-    return (
-      <div className="space-y-3 text-sm">
-        <Field label="Hooks">
-          <ul className="space-y-1">
-            {output.hooks.map((h, i) => (
-              <li key={i} className="text-zinc-700">
-                {i + 1}. {h}
-              </li>
-            ))}
-          </ul>
-        </Field>
-        <Field label="Voiceover">
-          <p className="text-zinc-700 whitespace-pre-wrap">
-            {output.script.voiceover}
-          </p>
-        </Field>
-        <Field label="Caption short">
-          <p className="text-zinc-700">{output.caption_short}</p>
-        </Field>
-        <Field label="Caption medium">
-          <p className="text-zinc-700 whitespace-pre-wrap">{output.caption_medium}</p>
-        </Field>
-        <Field label="Hashtags">
-          <p className="text-zinc-600 text-xs">{output.hashtags.join(' ')}</p>
-        </Field>
-      </div>
-    )
-  }
-  if (output.type === 'carousel') {
-    return (
-      <div className="space-y-3 text-sm">
-        <Field label={`Slides (${output.slides.length})`}>
-          <ol className="space-y-2">
-            {output.slides.map((s, i) => (
-              <li
-                key={i}
-                className="rounded border border-zinc-200 bg-white p-2"
-              >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-400 mb-0.5">
-                  Slide {i + 1} · {s.purpose}
-                </div>
-                <p className="font-medium text-xs">{s.headline}</p>
-                <p className="text-xs text-zinc-600">{s.subtext}</p>
-              </li>
-            ))}
-          </ol>
-        </Field>
-        <Field label="Caption short">
-          <p className="text-zinc-700">{output.caption_short}</p>
-        </Field>
-        <Field label="Caption medium">
-          <p className="text-zinc-700 whitespace-pre-wrap">{output.caption_medium}</p>
-        </Field>
-        <Field label="Hashtags">
-          <p className="text-zinc-600 text-xs">{output.hashtags.join(' ')}</p>
-        </Field>
-      </div>
-    )
-  }
-  return (
-    <div className="space-y-3 text-sm">
-      <Field label="Caption short">
-        <p className="text-zinc-700">{output.caption_short}</p>
-      </Field>
-      <Field label="Caption medium">
-        <p className="text-zinc-700 whitespace-pre-wrap">{output.caption_medium}</p>
-      </Field>
-      <Field label="Dirección visual">
-        <p className="text-zinc-700 whitespace-pre-wrap">{output.visual_direction}</p>
-      </Field>
-      <Field label="Hashtags">
-        <p className="text-zinc-600 text-xs">{output.hashtags.join(' ')}</p>
-      </Field>
-    </div>
-  )
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wider text-zinc-400 mb-1">
-        {label}
-      </p>
-      {children}
     </div>
   )
 }
