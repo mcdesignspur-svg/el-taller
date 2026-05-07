@@ -222,7 +222,7 @@ export function StudioForm() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 onChange={handlePhoto}
                 className="hidden"
               />
