@@ -34,6 +34,9 @@ export default async function TallerLayout({
           <Link href="/calendar" className="text-zinc-600 hover:text-zinc-900">
             Calendario
           </Link>
+          <Link href="/brand" className="text-zinc-600 hover:text-zinc-900">
+            Marca
+          </Link>
           <span className="text-zinc-300">·</span>
           <span className="text-xs text-zinc-500 hidden sm:inline">{user.email}</span>
           <form action={signOut}>

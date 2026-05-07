@@ -3,6 +3,9 @@ import { z } from 'zod'
 import { getCurrentProfile } from '@/lib/dal'
 import { createServerClient } from '@/lib/supabase/server'
 import { anthropic, DEFAULT_MODEL, logUsage } from '@/lib/anthropic'
+import { buildSystemPrompt, getBrandBrief } from '@/lib/brand-brief'
+import { getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
+import { headers } from 'next/headers'
 
 const Schema = z.object({
   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -16,60 +19,6 @@ const Schema = z.object({
     .nullable()
     .optional(),
 })
-
-const SYSTEM_PROMPT = `Eres un creative director de contenido para negocios pequeños en Puerto Rico. Tu voz es spanglish cálido y profesional — español con mezcla natural de inglés para términos de tech/business. NO uses slang pesado puertorriqueño en copy cliente-facing. NO suenes corporativo. Suena como un pana que sabe de marketing.
-
-El usuario te dará:
-- TIPO: reel, carousel, o static
-- IDEA en sus palabras
-- Opcionalmente, una FOTO
-
-Genera el contenido para ese tipo como JSON que matchee este schema EXACTO. Si te dan foto, basa el contenido en lo que ves en la foto + la idea.
-
-REEL:
-{
-  "type": "reel",
-  "hooks": [string, string, string],
-  "script": {
-    "voiceover": string,
-    "on_screen_text": [string]
-  },
-  "caption_short": string,
-  "caption_medium": string,
-  "hashtags": [string],
-  "manychat_keyword": string
-}
-
-CAROUSEL:
-{
-  "type": "carousel",
-  "slides": [
-    { "headline": string, "subtext": string, "purpose": "cover" | "body" | "cta" }
-  ],
-  "caption_short": string,
-  "caption_medium": string,
-  "hashtags": [string]
-}
-
-STATIC:
-{
-  "type": "static",
-  "caption_short": string,
-  "caption_medium": string,
-  "hashtags": [string],
-  "visual_direction": string
-}
-
-REGLAS:
-- hooks: 3 opciones distintas, primeras 2 segundos del reel
-- script.voiceover: lo que dice la persona en cámara
-- script.on_screen_text: 3-5 frases cortas que aparecen overlay
-- caption_short: máximo 100 caracteres
-- caption_medium: 200-400 caracteres, incluye CTA claro
-- hashtags: 8-15, mezcla de generales + nicho + Puerto Rico (#PuertoRico, #PR + relevantes)
-- manychat_keyword: solo si el post invita a comentar para recurso (ej. "GUIA", "INFO"), si no aplica omítelo
-- Carousel: 5-7 slides total — 1 cover + 3-5 body + 1 cta
-- Output PURO JSON, sin markdown fences, sin comentarios fuera del JSON`
 
 export async function POST(request: Request) {
   const { user, profile } = await getCurrentProfile()
@@ -108,12 +57,23 @@ export async function POST(request: Request) {
     text: `Tipo: ${type}\nIdea: ${idea}\n\nGenera el contenido como JSON puro.`,
   })
 
+  // Load brand brief + tenant name to build a tenant-aware system prompt.
+  const supabase = await createServerClient()
+  const brief = await getBrandBrief(supabase, profile.client_id)
+
+  const h = await headers()
+  const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
+  const tenant = slug ? await getTenantBySlug(slug) : null
+  const clientName = tenant?.name ?? 'el negocio'
+
+  const systemPrompt = buildSystemPrompt(brief, clientName, type)
+
   let response
   try {
     response = await anthropic.messages.create({
       model: DEFAULT_MODEL,
       max_tokens: 2048,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: [
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         { role: 'user', content: userContent as any },
@@ -142,7 +102,6 @@ export async function POST(request: Request) {
     )
   }
 
-  const supabase = await createServerClient()
   const { data: item, error: dbError } = await supabase
     .from('content_items')
     .insert({

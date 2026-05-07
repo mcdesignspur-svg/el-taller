@@ -29,6 +29,9 @@ export type BrandBrief = {
   primary_color: string | null
   secondary_color: string | null
   logo_url: string | null
+  default_hashtags: string | null
+  manychat_keywords: string | null
+  location: string | null
   updated_at: string
 }
 
