@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Calendar, Paperclip, Send, X } from 'lucide-react'
 import type { ContentOutput, ContentType } from '@/lib/types'
 import { OutputDisplay } from './output-display'
 
@@ -10,14 +11,13 @@ type GenerateResponse = {
   output: ContentOutput
 }
 
-const TYPES: { value: ContentType; label: string; hint: string }[] = [
-  { value: 'reel', label: 'Reel', hint: 'Video corto' },
-  { value: 'carousel', label: 'Carrusel', hint: '5-7 slides' },
-  { value: 'static', label: 'Static', hint: 'Una imagen' },
+const TYPES: { value: ContentType; label: string }[] = [
+  { value: 'reel', label: 'Reel' },
+  { value: 'carousel', label: 'Carrusel' },
+  { value: 'static', label: 'Static' },
 ]
 
 function todayInPR(): string {
-  // YYYY-MM-DD in America/Puerto_Rico
   const fmt = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Puerto_Rico',
     year: 'numeric',
@@ -25,6 +25,24 @@ function todayInPR(): string {
     day: '2-digit',
   })
   return fmt.format(new Date())
+}
+
+function formatDatePill(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const tomorrow = new Date(today)
+  tomorrow.setDate(tomorrow.getDate() + 1)
+
+  if (date.toDateString() === today.toDateString()) return 'Hoy'
+  if (date.toDateString() === tomorrow.toDateString()) return 'Mañana'
+
+  return date.toLocaleDateString('es-PR', {
+    month: 'short',
+    day: 'numeric',
+    weekday: 'short',
+  })
 }
 
 async function fileToBase64(file: File): Promise<string> {
@@ -41,6 +59,10 @@ async function fileToBase64(file: File): Promise<string> {
 
 export function StudioForm() {
   const router = useRouter()
+  const dateInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
   const [date, setDate] = useState(todayInPR())
   const [idea, setIdea] = useState('')
   const [type, setType] = useState<ContentType>('reel')
@@ -52,13 +74,20 @@ export function StudioForm() {
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<GenerateResponse | null>(null)
 
+  function openDatePicker() {
+    if (dateInputRef.current) {
+      // Modern browsers support showPicker(); fall back to focus().
+      const input = dateInputRef.current as HTMLInputElement & {
+        showPicker?: () => void
+      }
+      if (typeof input.showPicker === 'function') input.showPicker()
+      else input.focus()
+    }
+  }
+
   async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) {
-      setPhoto(null)
-      setPhotoName(null)
-      return
-    }
+    if (!file) return
     if (file.size > 5 * 1024 * 1024) {
       setError('La foto pesa más de 5MB. Súbela más liviana.')
       return
@@ -73,10 +102,22 @@ export function StudioForm() {
     }
   }
 
+  function clearPhoto() {
+    setPhoto(null)
+    setPhotoName(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  function autoGrowTextarea(el: HTMLTextAreaElement) {
+    el.style.height = 'auto'
+    el.style.height = `${Math.min(el.scrollHeight, 240)}px`
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!idea.trim()) {
       setError('Escribe la idea del contenido')
+      textareaRef.current?.focus()
       return
     }
     setLoading(true)
@@ -113,8 +154,7 @@ export function StudioForm() {
   function reset() {
     setResult(null)
     setIdea('')
-    setPhoto(null)
-    setPhotoName(null)
+    clearPhoto()
     setError(null)
   }
 
@@ -129,80 +169,107 @@ export function StudioForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      <div>
-        <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
-          Fecha
-        </label>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Date pill — above */}
+      <div className="flex justify-center">
+        <button
+          type="button"
+          onClick={openDatePicker}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-sm font-medium text-zinc-700 transition"
+        >
+          <Calendar size={14} />
+          {formatDatePill(date)}
+        </button>
         <input
+          ref={dateInputRef}
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
-          required
-          className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
         />
       </div>
 
-      <div>
-        <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
-          Idea
-        </label>
+      {/* Prompt box */}
+      <div className="relative rounded-3xl border border-zinc-200 bg-white shadow-sm hover:shadow-md focus-within:shadow-md focus-within:border-zinc-400 transition-all">
         <textarea
+          ref={textareaRef}
           value={idea}
-          onChange={(e) => setIdea(e.target.value)}
-          placeholder="Ej: Reel mostrando la nueva colección de verano. Quiero hablar del fit y los colores."
-          rows={4}
+          onChange={(e) => {
+            setIdea(e.target.value)
+            autoGrowTextarea(e.currentTarget)
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault()
+              handleSubmit(e)
+            }
+          }}
+          placeholder="Cuenta la idea del contenido…"
+          rows={2}
           required
-          className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 resize-none"
+          className="w-full resize-none px-5 pt-5 pb-16 text-base bg-transparent border-0 outline-0 placeholder:text-zinc-400 text-zinc-900"
         />
-      </div>
 
-      <div>
-        <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
-          Foto <span className="normal-case text-zinc-400">(opcional)</span>
-        </label>
-        <label className="flex items-center justify-center w-full rounded-lg border-2 border-dashed border-zinc-300 px-4 py-6 text-sm text-zinc-600 hover:border-zinc-400 hover:bg-zinc-50 cursor-pointer">
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={handlePhoto}
-            className="hidden"
-          />
-          {photoName ? (
-            <span className="text-zinc-900 font-medium">{photoName}</span>
-          ) : (
-            <span>Subir foto · La AI la analiza para generar el contenido</span>
-          )}
-        </label>
-      </div>
-
-      <div>
-        <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-2">
-          Tipo
-        </label>
-        <div className="grid grid-cols-3 gap-2">
-          {TYPES.map((opt) => (
-            <button
-              type="button"
-              key={opt.value}
-              onClick={() => setType(opt.value)}
-              className={`rounded-lg border px-4 py-3 text-sm transition ${
-                type === opt.value
-                  ? 'border-zinc-900 bg-zinc-900 text-white'
-                  : 'border-zinc-300 hover:border-zinc-500'
-              }`}
+        {/* Bottom bar inside the box */}
+        <div className="absolute left-3 right-3 bottom-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <label
+              className="p-2 rounded-full hover:bg-zinc-100 cursor-pointer text-zinc-500 hover:text-zinc-900 transition"
+              title="Subir foto"
             >
-              <div className="font-medium">{opt.label}</div>
-              <div
-                className={`text-xs mt-0.5 ${
-                  type === opt.value ? 'text-zinc-300' : 'text-zinc-500'
-                }`}
-              >
-                {opt.hint}
-              </div>
-            </button>
-          ))}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handlePhoto}
+                className="hidden"
+              />
+              <Paperclip size={18} />
+            </label>
+            {photoName && (
+              <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-zinc-100 text-xs text-zinc-700">
+                <span className="max-w-[160px] truncate">{photoName}</span>
+                <button
+                  type="button"
+                  onClick={clearPhoto}
+                  className="p-0.5 rounded-full hover:bg-zinc-200"
+                  aria-label="Quitar foto"
+                >
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !idea.trim()}
+            className="p-2.5 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            title="Generar"
+          >
+            {loading ? <Spinner /> : <Send size={16} />}
+          </button>
         </div>
+      </div>
+
+      {/* Type pills — below */}
+      <div className="flex justify-center gap-2">
+        {TYPES.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setType(opt.value)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+              type === opt.value
+                ? 'bg-zinc-900 text-white'
+                : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -210,14 +277,33 @@ export function StudioForm() {
           {error}
         </div>
       )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-zinc-900 text-white px-4 py-3 text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition"
-      >
-        {loading ? 'Generando…' : 'Generar contenido'}
-      </button>
     </form>
+  )
+}
+
+function Spinner() {
+  return (
+    <svg
+      className="animate-spin"
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+    >
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeOpacity="0.25"
+      />
+      <path
+        d="M22 12a10 10 0 0 1-10 10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
   )
 }
