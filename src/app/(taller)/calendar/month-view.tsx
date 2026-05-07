@@ -10,7 +10,7 @@ import { deleteItem, setItemStatus } from './actions'
 
 type Row = Pick<
   ContentItem,
-  'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status'
+  'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status' | 'photo_url'
 >
 
 const TYPE_DOT: Record<ContentItem['type'], string> = {
@@ -155,13 +155,13 @@ export function MonthView({ monthKey, items }: Props) {
             return (
               <div
                 key={i}
-                className={`min-h-[110px] border-r border-b border-zinc-200 last:border-r-0 p-1.5 ${
+                className={`min-h-[80px] sm:min-h-[110px] border-r border-b border-zinc-200 p-1 sm:p-1.5 ${
                   isOtherMonth ? 'bg-zinc-50/40' : 'bg-white'
                 } ${(i + 1) % 7 === 0 ? 'border-r-0' : ''}`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span
-                    className={`text-xs font-medium inline-flex items-center justify-center w-6 h-6 rounded-full ${
+                    className={`text-[10px] sm:text-xs font-medium inline-flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full ${
                       isToday
                         ? 'bg-zinc-900 text-white'
                         : isOtherMonth
@@ -180,21 +180,24 @@ export function MonthView({ monthKey, items }: Props) {
                       onClick={() => setOpenId(item.id)}
                       className={`w-full text-left rounded-md border ${
                         STATUS_BORDER[item.status]
-                      } bg-white hover:bg-zinc-50 px-2 py-1 text-xs flex items-center gap-1.5 min-w-0`}
+                      } bg-white hover:bg-zinc-50 px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs flex items-center gap-1 sm:gap-1.5 min-w-0`}
                     >
                       <span
                         className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
                           TYPE_DOT[item.type]
                         }`}
                       />
-                      <span className="truncate text-zinc-800">
+                      <span className="truncate text-zinc-800 hidden sm:inline">
                         {item.idea || TYPE_LABEL[item.type]}
+                      </span>
+                      <span className="truncate text-zinc-800 sm:hidden">
+                        {TYPE_LABEL[item.type]}
                       </span>
                     </button>
                   ))}
                   {dayItems.length > 3 && (
-                    <div className="text-[10px] text-zinc-500 px-2">
-                      +{dayItems.length - 3} más
+                    <div className="text-[10px] text-zinc-500 px-1 sm:px-2">
+                      +{dayItems.length - 3}
                     </div>
                   )}
                 </div>
@@ -271,15 +274,15 @@ function ItemModal({ item, onClose }: { item: Row; onClose: () => void }) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center p-4 bg-black/40 backdrop-blur-sm overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-stretch sm:items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl max-w-2xl w-full my-8"
+        className="bg-white sm:rounded-2xl shadow-xl max-w-2xl w-full sm:my-8 flex flex-col h-full sm:h-auto sm:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-b border-zinc-200">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200 shrink-0">
+          <div className="flex items-center gap-2 min-w-0 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-zinc-500">
               {formatDate(item.scheduled_date)}
             </span>
@@ -298,27 +301,31 @@ function ItemModal({ item, onClose }: { item: Row; onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-500"
+            className="p-1.5 rounded-full hover:bg-zinc-100 text-zinc-500 shrink-0"
             aria-label="Cerrar"
           >
             <X size={16} />
           </button>
         </div>
 
-        <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
+        <div className="px-4 sm:px-6 py-4 flex-1 overflow-y-auto">
           {item.idea && (
             <p className="text-sm text-zinc-700 mb-4 italic">
               &ldquo;{item.idea}&rdquo;
             </p>
           )}
           {item.output ? (
-            <OutputEditor itemId={item.id} initialOutput={item.output} />
+            <OutputEditor
+              itemId={item.id}
+              initialOutput={item.output}
+              photoUrl={item.photo_url}
+            />
           ) : (
             <p className="text-sm text-zinc-500">Este item no tiene output AI.</p>
           )}
         </div>
 
-        <div className="flex flex-wrap gap-2 px-6 py-4 border-t border-zinc-200">
+        <div className="flex flex-wrap gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-zinc-200 shrink-0">
           {next && (
             <button
               type="button"

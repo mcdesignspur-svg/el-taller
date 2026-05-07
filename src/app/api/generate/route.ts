@@ -102,6 +102,23 @@ export async function POST(request: Request) {
     )
   }
 
+  // Best-effort: persist the photo so the user can see it in the calendar
+  // later. Failure here doesn't block saving the generated content.
+  let photoPath: string | null = null
+  if (photo) {
+    const ext = photo.media_type.split('/')[1] ?? 'jpg'
+    const path = `${profile.client_id}/${crypto.randomUUID()}.${ext}`
+    const buffer = Buffer.from(photo.data, 'base64')
+    const { error: uploadError } = await supabase.storage
+      .from('content-photos')
+      .upload(path, buffer, { contentType: photo.media_type })
+    if (uploadError) {
+      console.error('[generate] photo upload failed:', uploadError)
+    } else {
+      photoPath = path
+    }
+  }
+
   const { data: item, error: dbError } = await supabase
     .from('content_items')
     .insert({
@@ -110,10 +127,11 @@ export async function POST(request: Request) {
       type,
       idea,
       output,
+      photo_url: photoPath,
       status: 'draft',
       created_by: user.id,
     })
-    .select('id, scheduled_date, type, idea, output, status')
+    .select('id, scheduled_date, type, idea, output, status, photo_url')
     .single()
 
   if (dbError) {
@@ -129,5 +147,18 @@ export async function POST(request: Request) {
     outputTokens: response.usage.output_tokens,
   })
 
-  return NextResponse.json({ item, output })
+  // Convert the storage path to a signed URL so the studio can render
+  // the photo immediately after generation.
+  let signedPhotoUrl: string | null = null
+  if (photoPath) {
+    const { data: signed } = await supabase.storage
+      .from('content-photos')
+      .createSignedUrl(photoPath, 60 * 60 * 24)
+    signedPhotoUrl = signed?.signedUrl ?? null
+  }
+
+  return NextResponse.json({
+    item: { ...item, photo_url: signedPhotoUrl },
+    output,
+  })
 }

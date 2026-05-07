@@ -4,7 +4,7 @@ import { CalendarRow } from './calendar-row'
 
 type Row = Pick<
   ContentItem,
-  'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status'
+  'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status' | 'photo_url'
 >
 
 export function ListView({ items }: { items: Row[] }) {

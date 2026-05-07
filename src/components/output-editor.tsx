@@ -10,13 +10,15 @@ import type {
   StaticOutput,
 } from '@/lib/types'
 import { updateItemOutput } from '@/app/(taller)/calendar/actions'
+import { CopyButton } from './copy-button'
 
 type Props = {
   itemId: string
   initialOutput: ContentOutput
+  photoUrl?: string | null
 }
 
-export function OutputEditor({ itemId, initialOutput }: Props) {
+export function OutputEditor({ itemId, initialOutput, photoUrl }: Props) {
   const router = useRouter()
   const [output, setOutput] = useState<ContentOutput>(initialOutput)
   const [pending, startTransition] = useTransition()
@@ -42,6 +44,17 @@ export function OutputEditor({ itemId, initialOutput }: Props) {
 
   return (
     <div className="space-y-5">
+      {photoUrl && (
+        <div className="rounded-lg overflow-hidden border border-zinc-200 bg-zinc-50">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={photoUrl}
+            alt="Foto del contenido"
+            className="w-full h-auto max-h-64 object-contain bg-zinc-50"
+          />
+        </div>
+      )}
+
       {output.type === 'reel' && (
         <ReelEditor output={output} onChange={setOutput} />
       )}
@@ -52,7 +65,7 @@ export function OutputEditor({ itemId, initialOutput }: Props) {
         <StaticEditor output={output} onChange={setOutput} />
       )}
 
-      <div className="flex items-center gap-3 pt-2 border-t border-zinc-100">
+      <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-zinc-100 sticky bottom-0 bg-white py-3 -mx-1 px-1">
         <button
           type="button"
           onClick={handleSave}
@@ -74,11 +87,22 @@ export function OutputEditor({ itemId, initialOutput }: Props) {
 // Field primitives
 // =============================================================================
 
-function Label({ children }: { children: React.ReactNode }) {
+function Label({
+  children,
+  copyText,
+}: {
+  children: React.ReactNode
+  copyText?: string
+}) {
   return (
-    <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">
-      {children}
-    </label>
+    <div className="flex items-center justify-between mb-1.5">
+      <label className="text-xs uppercase tracking-wider text-zinc-500">
+        {children}
+      </label>
+      {copyText !== undefined && copyText.trim().length > 0 && (
+        <CopyButton text={copyText} />
+      )}
+    </div>
   )
 }
 
@@ -129,17 +153,19 @@ function StringArrayEditor({
   onChange,
   itemPlaceholder,
   addLabel,
+  copyable = true,
 }: {
   items: string[]
   onChange: (next: string[]) => void
   itemPlaceholder?: string
   addLabel: string
+  copyable?: boolean
 }) {
   return (
     <div className="space-y-2">
       {items.map((item, i) => (
         <div key={i} className="flex gap-2 items-start">
-          <span className="text-xs text-zinc-400 pt-2.5 w-5 text-right">
+          <span className="text-xs text-zinc-400 pt-2.5 w-5 text-right shrink-0">
             {i + 1}.
           </span>
           <input
@@ -151,12 +177,13 @@ function StringArrayEditor({
               onChange(next)
             }}
             placeholder={itemPlaceholder}
-            className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+            className="flex-1 min-w-0 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
           />
+          {copyable && item.trim() && <CopyButton text={item} label="" />}
           <button
             type="button"
             onClick={() => onChange(items.filter((_, idx) => idx !== i))}
-            className="p-2 text-zinc-400 hover:text-red-600"
+            className="p-2 text-zinc-400 hover:text-red-600 shrink-0"
             aria-label="Eliminar"
           >
             <X size={14} />
@@ -232,7 +259,7 @@ function ReelEditor({
       </div>
 
       <div>
-        <Label>Script · Voiceover</Label>
+        <Label copyText={output.script.voiceover}>Script · Voiceover</Label>
         <TextArea
           value={output.script.voiceover}
           onChange={(v) =>
@@ -243,7 +270,9 @@ function ReelEditor({
       </div>
 
       <div>
-        <Label>Script · On-screen text</Label>
+        <Label copyText={output.script.on_screen_text.join('\n')}>
+          Script · On-screen text
+        </Label>
         <StringArrayEditor
           items={output.script.on_screen_text}
           onChange={(arr) =>
@@ -255,7 +284,7 @@ function ReelEditor({
       </div>
 
       <div>
-        <Label>Caption · Short</Label>
+        <Label copyText={output.caption_short}>Caption · Short</Label>
         <TextInput
           value={output.caption_short}
           onChange={(v) => update('caption_short', v)}
@@ -263,7 +292,7 @@ function ReelEditor({
       </div>
 
       <div>
-        <Label>Caption · Medium</Label>
+        <Label copyText={output.caption_medium}>Caption · Medium</Label>
         <TextArea
           value={output.caption_medium}
           onChange={(v) => update('caption_medium', v)}
@@ -272,7 +301,7 @@ function ReelEditor({
       </div>
 
       <div>
-        <Label>Hashtags</Label>
+        <Label copyText={output.hashtags.join(' ')}>Hashtags</Label>
         <HashtagsEditor
           value={output.hashtags}
           onChange={(v) => update('hashtags', v)}
@@ -280,7 +309,9 @@ function ReelEditor({
       </div>
 
       <div>
-        <Label>ManyChat keyword (opcional)</Label>
+        <Label copyText={output.manychat_keyword ?? ''}>
+          ManyChat keyword (opcional)
+        </Label>
         <TextInput
           value={output.manychat_keyword ?? ''}
           onChange={(v) => update('manychat_keyword', v || undefined)}
@@ -328,7 +359,7 @@ function CarouselEditor({
               key={i}
               className="rounded-lg border border-zinc-200 bg-zinc-50/50 p-3 space-y-2"
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] uppercase tracking-wider text-zinc-400">
                     Slide {i + 1}
@@ -348,19 +379,25 @@ function CarouselEditor({
                     <option value="cta">CTA</option>
                   </select>
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    update(
-                      'slides',
-                      output.slides.filter((_, idx) => idx !== i),
-                    )
-                  }
-                  className="p-1 text-zinc-400 hover:text-red-600"
-                  aria-label="Eliminar slide"
-                >
-                  <X size={14} />
-                </button>
+                <div className="flex items-center gap-1">
+                  <CopyButton
+                    text={`${slide.headline}\n\n${slide.subtext}`}
+                    label=""
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update(
+                        'slides',
+                        output.slides.filter((_, idx) => idx !== i),
+                      )
+                    }
+                    className="p-1 text-zinc-400 hover:text-red-600"
+                    aria-label="Eliminar slide"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
               <TextInput
                 value={slide.headline}
@@ -392,7 +429,7 @@ function CarouselEditor({
       </div>
 
       <div>
-        <Label>Caption · Short</Label>
+        <Label copyText={output.caption_short}>Caption · Short</Label>
         <TextInput
           value={output.caption_short}
           onChange={(v) => update('caption_short', v)}
@@ -400,7 +437,7 @@ function CarouselEditor({
       </div>
 
       <div>
-        <Label>Caption · Medium</Label>
+        <Label copyText={output.caption_medium}>Caption · Medium</Label>
         <TextArea
           value={output.caption_medium}
           onChange={(v) => update('caption_medium', v)}
@@ -409,7 +446,7 @@ function CarouselEditor({
       </div>
 
       <div>
-        <Label>Hashtags</Label>
+        <Label copyText={output.hashtags.join(' ')}>Hashtags</Label>
         <HashtagsEditor
           value={output.hashtags}
           onChange={(v) => update('hashtags', v)}
@@ -437,7 +474,7 @@ function StaticEditor({
   return (
     <div className="space-y-5">
       <div>
-        <Label>Caption · Short</Label>
+        <Label copyText={output.caption_short}>Caption · Short</Label>
         <TextInput
           value={output.caption_short}
           onChange={(v) => update('caption_short', v)}
@@ -445,7 +482,7 @@ function StaticEditor({
       </div>
 
       <div>
-        <Label>Caption · Medium</Label>
+        <Label copyText={output.caption_medium}>Caption · Medium</Label>
         <TextArea
           value={output.caption_medium}
           onChange={(v) => update('caption_medium', v)}
@@ -454,7 +491,7 @@ function StaticEditor({
       </div>
 
       <div>
-        <Label>Dirección visual</Label>
+        <Label copyText={output.visual_direction}>Dirección visual</Label>
         <TextArea
           value={output.visual_direction}
           onChange={(v) => update('visual_direction', v)}
@@ -463,7 +500,7 @@ function StaticEditor({
       </div>
 
       <div>
-        <Label>Hashtags</Label>
+        <Label copyText={output.hashtags.join(' ')}>Hashtags</Label>
         <HashtagsEditor
           value={output.hashtags}
           onChange={(v) => update('hashtags', v)}

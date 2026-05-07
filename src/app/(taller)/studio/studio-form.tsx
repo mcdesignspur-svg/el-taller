@@ -7,7 +7,12 @@ import type { ContentOutput, ContentType } from '@/lib/types'
 import { OutputDisplay } from './output-display'
 
 type GenerateResponse = {
-  item: { id: string; scheduled_date: string; type: ContentType }
+  item: {
+    id: string
+    scheduled_date: string
+    type: ContentType
+    photo_url: string | null
+  }
   output: ContentOutput
 }
 
@@ -164,6 +169,7 @@ export function StudioForm() {
         itemId={result.item.id}
         output={result.output}
         scheduled_date={result.item.scheduled_date}
+        photoUrl={result.item.photo_url}
         onReset={reset}
       />
     )

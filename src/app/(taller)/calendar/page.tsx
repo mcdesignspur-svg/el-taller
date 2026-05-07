@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 type Row = Pick<
   ContentItem,
-  'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status'
+  'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status' | 'photo_url'
 >
 
 type SearchParams = Promise<{ view?: string; month?: string }>
@@ -28,7 +28,7 @@ export default async function CalendarPage({
   const supabase = await createServerClient()
   const query = supabase
     .from('content_items')
-    .select('id, scheduled_date, type, idea, output, status')
+    .select('id, scheduled_date, type, idea, output, status, photo_url')
 
   if (view === 'month') {
     const [y, m] = monthParam.split('-').map(Number)
@@ -42,6 +42,9 @@ export default async function CalendarPage({
   }
 
   const { data, error } = await query
+
+  // Enrich photo_url paths with 24h signed URLs so the editor can render them.
+  const rows = await enrichWithSignedPhotos(supabase, (data as Row[]) ?? [])
 
   return (
     <main className="max-w-5xl mx-auto p-8">
@@ -63,9 +66,9 @@ export default async function CalendarPage({
           Error cargando contenido: {error.message}
         </div>
       ) : view === 'month' ? (
-        <MonthView monthKey={monthParam} items={(data as Row[]) ?? []} />
+        <MonthView monthKey={monthParam} items={rows} />
       ) : (
-        <ListView items={(data as Row[]) ?? []} />
+        <ListView items={rows} />
       )}
     </main>
   )
@@ -111,4 +114,31 @@ function isoDate(y: number, mIndex: number, d: number): string {
   const mm = String(date.getMonth() + 1).padStart(2, '0')
   const dd = String(date.getDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
+}
+
+async function enrichWithSignedPhotos(
+  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  rows: Row[],
+): Promise<Row[]> {
+  const paths = rows
+    .map((r) => r.photo_url)
+    .filter((p): p is string => typeof p === 'string' && p.length > 0)
+
+  if (paths.length === 0) return rows
+
+  const { data: signed } = await supabase.storage
+    .from('content-photos')
+    .createSignedUrls(paths, 60 * 60 * 24)
+
+  const byPath = new Map<string, string>()
+  if (signed) {
+    for (const entry of signed) {
+      if (entry.path && entry.signedUrl) byPath.set(entry.path, entry.signedUrl)
+    }
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    photo_url: r.photo_url ? (byPath.get(r.photo_url) ?? null) : null,
+  }))
 }

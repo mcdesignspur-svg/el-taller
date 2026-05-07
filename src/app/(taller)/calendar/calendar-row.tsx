@@ -32,7 +32,7 @@ const STATUS_CLASSES: Record<ContentStatus, string> = {
 type Props = {
   item: Pick<
     ContentItem,
-    'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status'
+    'id' | 'scheduled_date' | 'type' | 'idea' | 'output' | 'status' | 'photo_url'
   >
 }
 
@@ -93,7 +93,11 @@ export function CalendarRow({ item }: Props) {
       {open && (
         <div className="border-t border-zinc-200 px-4 py-4 space-y-4 bg-zinc-50/50">
           {item.output ? (
-            <OutputEditor itemId={item.id} initialOutput={item.output} />
+            <OutputEditor
+              itemId={item.id}
+              initialOutput={item.output}
+              photoUrl={item.photo_url}
+            />
           ) : (
             <p className="text-sm text-zinc-500">Este item no tiene output AI.</p>
           )}

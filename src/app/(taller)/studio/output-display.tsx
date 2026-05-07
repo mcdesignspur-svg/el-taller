@@ -8,10 +8,17 @@ type Props = {
   itemId: string
   output: ContentOutput
   scheduled_date: string
+  photoUrl?: string | null
   onReset: () => void
 }
 
-export function OutputDisplay({ itemId, output, scheduled_date, onReset }: Props) {
+export function OutputDisplay({
+  itemId,
+  output,
+  scheduled_date,
+  photoUrl,
+  onReset,
+}: Props) {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -20,7 +27,11 @@ export function OutputDisplay({ itemId, output, scheduled_date, onReset }: Props
         <span className="text-emerald-700"> · Edita lo que quieras y guarda.</span>
       </div>
 
-      <OutputEditor itemId={itemId} initialOutput={output} />
+      <OutputEditor
+        itemId={itemId}
+        initialOutput={output}
+        photoUrl={photoUrl}
+      />
 
       <div className="flex gap-3 pt-4 border-t border-zinc-100">
         <button
