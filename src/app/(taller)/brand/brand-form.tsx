@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect } from 'react'
+import { toast } from 'sonner'
 import type { BrandBrief } from '@/lib/types'
 import { saveBrandBrief, type BrandFormState } from './actions'
 
@@ -15,6 +16,11 @@ export function BrandForm({ brief }: Props) {
     saveBrandBrief,
     initialState,
   )
+
+  useEffect(() => {
+    if (state.status === 'saved') toast.success('Brand brief guardado')
+    if (state.status === 'error') toast.error(state.message)
+  }, [state])
 
   return (
     <form action={action} className="space-y-8">

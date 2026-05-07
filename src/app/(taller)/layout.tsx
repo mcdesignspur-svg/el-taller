@@ -3,6 +3,8 @@ import { headers } from 'next/headers'
 import { resolveSlugFromHost, getTenantBySlug } from '@/lib/tenant'
 import { getCurrentProfile } from '@/lib/dal'
 import { signOut } from '@/lib/auth-actions'
+import { createServerClient } from '@/lib/supabase/server'
+import { getBrandBrief } from '@/lib/brand-brief'
 
 // Shared layout for /studio and /calendar.
 // Enforces auth (redirect → /login) and renders the tenant chrome.
@@ -12,20 +14,34 @@ export default async function TallerLayout({
 }: {
   children: React.ReactNode
 }) {
-  const { user } = await getCurrentProfile()
+  const { user, profile } = await getCurrentProfile()
 
   const h = await headers()
   const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
   const tenant = slug ? await getTenantBySlug(slug) : null
 
+  const supabase = await createServerClient()
+  const brief = await getBrandBrief(supabase, profile.client_id)
+
+  // Tenant accent colour drives the primary CTA button background.
+  // Falls back to zinc-900 when the brand brief doesn't have one set.
+  const brandAccent = brief?.primary_color?.trim() || '#18181b'
+
   return (
-    <div className="flex flex-col flex-1 min-h-full">
-      <header className="border-b border-zinc-200 px-6 py-4 flex items-center justify-between gap-4">
-        <div className="flex items-baseline gap-3">
-          <span className="text-xs uppercase tracking-widest text-zinc-500">
+    <div
+      className="flex flex-col flex-1 min-h-full"
+      style={{ ['--brand-accent' as string]: brandAccent }}
+    >
+      <header className="border-b border-zinc-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-xs uppercase tracking-widest text-zinc-500 hidden sm:inline">
             El Taller
           </span>
-          {tenant && <span className="text-sm font-medium">{tenant.name}</span>}
+          {tenant && (
+            <span className="text-base font-semibold text-zinc-900 truncate">
+              {tenant.name}
+            </span>
+          )}
         </div>
         <nav className="flex items-center gap-5 text-sm">
           <Link href="/studio" className="text-zinc-600 hover:text-zinc-900">

@@ -18,6 +18,9 @@ const Schema = z.object({
     })
     .nullable()
     .optional(),
+  // When set, the route updates the existing item instead of inserting a
+  // new one — used by the regenerate flow on the studio.
+  update_id: z.string().uuid().optional(),
 })
 
 export async function POST(request: Request) {
@@ -32,7 +35,7 @@ export async function POST(request: Request) {
     )
   }
 
-  const { scheduled_date, type, idea, photo } = parsed.data
+  const { scheduled_date, type, idea, photo, update_id } = parsed.data
 
   const userContent: Array<
     | { type: 'text'; text: string }
@@ -102,40 +105,90 @@ export async function POST(request: Request) {
     )
   }
 
-  // Best-effort: persist the photo so the user can see it in the calendar
-  // later. Failure here doesn't block saving the generated content.
-  let photoPath: string | null = null
-  if (photo) {
-    const ext = photo.media_type.split('/')[1] ?? 'jpg'
-    const path = `${profile.client_id}/${crypto.randomUUID()}.${ext}`
-    const buffer = Buffer.from(photo.data, 'base64')
-    const { error: uploadError } = await supabase.storage
-      .from('content-photos')
-      .upload(path, buffer, { contentType: photo.media_type })
-    if (uploadError) {
-      console.error('[generate] photo upload failed:', uploadError)
-    } else {
-      photoPath = path
+  // Regenerate path: update existing row, keep its photo_url.
+  let item:
+    | {
+        id: string
+        scheduled_date: string
+        type: string
+        idea: string | null
+        output: unknown
+        status: string
+        photo_url: string | null
+      }
+    | null = null
+  let dbError: { message: string } | null = null
+
+  if (update_id) {
+    // Verify the item belongs to this tenant before touching it.
+    const { data: existing, error: fetchError } = await supabase
+      .from('content_items')
+      .select('id, photo_url')
+      .eq('id', update_id)
+      .maybeSingle()
+    if (fetchError || !existing) {
+      return NextResponse.json(
+        { error: 'No encontré el contenido a regenerar' },
+        { status: 404 },
+      )
     }
+
+    const updated = await supabase
+      .from('content_items')
+      .update({
+        scheduled_date,
+        type,
+        idea,
+        output,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', update_id)
+      .select('id, scheduled_date, type, idea, output, status, photo_url')
+      .single()
+    item = updated.data
+    dbError = updated.error
+  } else {
+    // Fresh generation: best-effort upload of the photo to storage so the
+    // user can see it in the calendar later. Failure here does not block
+    // saving the generated content.
+    let photoPath: string | null = null
+    if (photo) {
+      const ext = photo.media_type.split('/')[1] ?? 'jpg'
+      const path = `${profile.client_id}/${crypto.randomUUID()}.${ext}`
+      const buffer = Buffer.from(photo.data, 'base64')
+      const { error: uploadError } = await supabase.storage
+        .from('content-photos')
+        .upload(path, buffer, { contentType: photo.media_type })
+      if (uploadError) {
+        console.error('[generate] photo upload failed:', uploadError)
+      } else {
+        photoPath = path
+      }
+    }
+
+    const inserted = await supabase
+      .from('content_items')
+      .insert({
+        client_id: profile.client_id,
+        scheduled_date,
+        type,
+        idea,
+        output,
+        photo_url: photoPath,
+        status: 'draft',
+        created_by: user.id,
+      })
+      .select('id, scheduled_date, type, idea, output, status, photo_url')
+      .single()
+    item = inserted.data
+    dbError = inserted.error
   }
 
-  const { data: item, error: dbError } = await supabase
-    .from('content_items')
-    .insert({
-      client_id: profile.client_id,
-      scheduled_date,
-      type,
-      idea,
-      output,
-      photo_url: photoPath,
-      status: 'draft',
-      created_by: user.id,
-    })
-    .select('id, scheduled_date, type, idea, output, status, photo_url')
-    .single()
-
-  if (dbError) {
-    return NextResponse.json({ error: dbError.message }, { status: 500 })
+  if (dbError || !item) {
+    return NextResponse.json(
+      { error: dbError?.message ?? 'No pude guardar' },
+      { status: 500 },
+    )
   }
 
   await logUsage({
@@ -147,13 +200,13 @@ export async function POST(request: Request) {
     outputTokens: response.usage.output_tokens,
   })
 
-  // Convert the storage path to a signed URL so the studio can render
-  // the photo immediately after generation.
+  // Convert the persisted storage path to a signed URL so the studio can
+  // render the photo immediately. Works for both fresh and regen flows.
   let signedPhotoUrl: string | null = null
-  if (photoPath) {
+  if (item.photo_url) {
     const { data: signed } = await supabase.storage
       .from('content-photos')
-      .createSignedUrl(photoPath, 60 * 60 * 24)
+      .createSignedUrl(item.photo_url, 60 * 60 * 24)
     signedPhotoUrl = signed?.signedUrl ?? null
   }
 

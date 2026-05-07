@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { getCurrentProfile } from '@/lib/dal'
 import { createServerClient } from '@/lib/supabase/server'
 import { getBrandBrief, isBriefMeaningful } from '@/lib/brand-brief'
@@ -10,6 +11,17 @@ export default async function StudioPage() {
   const { profile } = await getCurrentProfile()
   const supabase = await createServerClient()
   const brief = await getBrandBrief(supabase, profile.client_id)
+
+  // First-time onboarding: if the user has no brand brief AND no content
+  // yet, push them to /brand so the very first generation isn't generic.
+  if (!isBriefMeaningful(brief)) {
+    const { count } = await supabase
+      .from('content_items')
+      .select('id', { count: 'exact', head: true })
+      .limit(1)
+    if ((count ?? 0) === 0) redirect('/brand?welcome=1')
+  }
+
   const showBriefBanner = !isBriefMeaningful(brief)
 
   return (

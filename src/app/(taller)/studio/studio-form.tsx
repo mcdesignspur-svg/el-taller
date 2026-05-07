@@ -156,6 +156,27 @@ export function StudioForm() {
     }
   }
 
+  async function handleRegenerate(): Promise<void> {
+    if (!result) return
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        scheduled_date: date,
+        type,
+        idea,
+        photo,
+        update_id: result.item.id,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      throw new Error(json.error ?? 'Error regenerando')
+    }
+    setResult(json as GenerateResponse)
+    router.refresh()
+  }
+
   function reset() {
     setResult(null)
     setIdea('')
@@ -171,6 +192,7 @@ export function StudioForm() {
         scheduled_date={result.item.scheduled_date}
         photoUrl={result.item.photo_url}
         onReset={reset}
+        onRegenerate={handleRegenerate}
       />
     )
   }
@@ -253,7 +275,8 @@ export function StudioForm() {
           <button
             type="submit"
             disabled={loading || !idea.trim()}
-            className="p-2.5 rounded-full bg-zinc-900 text-white hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition"
+            style={{ backgroundColor: 'var(--brand-accent, #18181b)' }}
+            className="p-2.5 rounded-full text-white hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed transition"
             title="Generar"
           >
             {loading ? <Spinner /> : <Send size={16} />}
@@ -268,9 +291,14 @@ export function StudioForm() {
             key={opt.value}
             type="button"
             onClick={() => setType(opt.value)}
+            style={
+              type === opt.value
+                ? { backgroundColor: 'var(--brand-accent, #18181b)' }
+                : undefined
+            }
             className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
               type === opt.value
-                ? 'bg-zinc-900 text-white'
+                ? 'text-white'
                 : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200'
             }`}
           >

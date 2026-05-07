@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, X } from 'lucide-react'
+import { toast } from 'sonner'
 import type {
   ContentOutput,
   ReelOutput,
@@ -34,9 +35,11 @@ export function OutputEditor({ itemId, initialOutput, photoUrl }: Props) {
       const res = await updateItemOutput(itemId, output)
       if (res.error) {
         setError(res.error)
+        toast.error(res.error)
         return
       }
       setSaved(true)
+      toast.success('Cambios guardados')
       router.refresh()
       setTimeout(() => setSaved(false), 2000)
     })
