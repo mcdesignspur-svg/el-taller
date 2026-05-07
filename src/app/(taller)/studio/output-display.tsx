@@ -62,10 +62,18 @@ function Section({
   )
 }
 
-function CopyBlock({ text }: { text: string }) {
+function CopyBlock({ text }: { text: string | null | undefined }) {
+  const value = text?.trim()
+  if (!value) {
+    return (
+      <div className="rounded-lg bg-zinc-50 border border-zinc-200 px-4 py-3 text-sm italic text-zinc-400">
+        (la AI no devolvió este campo)
+      </div>
+    )
+  }
   return (
-    <div className="rounded-lg bg-zinc-50 border border-zinc-200 px-4 py-3 text-sm whitespace-pre-wrap font-mono text-zinc-800">
-      {text}
+    <div className="rounded-lg bg-zinc-50 border border-zinc-200 px-4 py-3 text-sm whitespace-pre-wrap font-mono text-zinc-900">
+      {value}
     </div>
   )
 }
