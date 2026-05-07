@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Paperclip, Send, X } from 'lucide-react'
+import { Calendar, ImagePlus, Send, X } from 'lucide-react'
 import type { ContentOutput, ContentType } from '@/lib/types'
 import { OutputDisplay } from './output-display'
 
@@ -222,11 +222,11 @@ export function StudioForm() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
+                accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif"
                 onChange={handlePhoto}
                 className="hidden"
               />
-              <Paperclip size={18} />
+              <ImagePlus size={18} />
             </label>
             {photoName && (
               <span className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1 rounded-full bg-zinc-100 text-xs text-zinc-700">
