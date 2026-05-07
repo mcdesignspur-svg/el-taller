@@ -1,4 +1,4 @@
-import { type NextRequest } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/proxy'
 import { resolveSlugFromHost } from '@/lib/tenant'
 
@@ -6,9 +6,20 @@ import { resolveSlugFromHost } from '@/lib/tenant'
 // (1) keep the Supabase auth session fresh,
 // (2) attach `x-tenant-slug` to the request so server components can
 // scope queries without re-parsing the host on each call.
+//
+// Wrapped in try/catch so a Supabase / env-var failure can't take the
+// entire site down with MIDDLEWARE_INVOCATION_FAILED. Auth pages will
+// still work and surface the underlying issue.
 
 export async function middleware(request: NextRequest) {
-  const response = await updateSession(request)
+  let response: NextResponse
+
+  try {
+    response = await updateSession(request)
+  } catch (err) {
+    console.error('[middleware] updateSession failed:', err)
+    response = NextResponse.next({ request: { headers: request.headers } })
+  }
 
   const slug = resolveSlugFromHost(request.headers.get('host'))
   if (slug) {
