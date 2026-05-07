@@ -1,14 +1,13 @@
 'use client'
 
 // Global error boundary. Must define its own <html> and <body> because it
-// replaces the root layout when active. Next.js 16 expects `unstable_retry`
-// (renamed from `reset`).
+// replaces the root layout when active.
 
 export default function GlobalError({
-  unstable_retry,
+  reset,
 }: {
   error: Error & { digest?: string }
-  unstable_retry: () => void
+  reset: () => void
 }) {
   return (
     <html lang="es">
@@ -23,7 +22,7 @@ export default function GlobalError({
           </p>
           <button
             type="button"
-            onClick={() => unstable_retry()}
+            onClick={() => reset()}
             className="rounded-lg bg-zinc-900 text-white px-5 py-2.5 text-sm font-medium hover:bg-zinc-800"
           >
             Volver a intentar

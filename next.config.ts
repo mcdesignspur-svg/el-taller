@@ -7,10 +7,6 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
-  // Workaround for Next 16 prerender bug on /_global-error
-  // (vercel/next.js#86178, #85668, #84994). standalone output skips the
-  // problematic static export pass while still working on Vercel.
-  output: 'standalone',
 }
 
 export default nextConfig
