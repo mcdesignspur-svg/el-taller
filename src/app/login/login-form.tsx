@@ -1,44 +1,59 @@
 'use client'
 
 import { useActionState } from 'react'
-import { sendMagicLink, type LoginState } from './actions'
+import { signIn, type LoginState } from './actions'
 
 const initialState: LoginState = { status: 'idle' }
 
 export function LoginForm() {
   const [state, action, pending] = useActionState<LoginState, FormData>(
-    sendMagicLink,
+    signIn,
     initialState,
   )
 
-  if (state.status === 'sent') {
-    return (
-      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-6 text-center">
-        <p className="text-zinc-900 font-medium mb-1">Revisa tu email</p>
-        <p className="text-sm text-zinc-600">
-          Te mandamos un enlace a <span className="font-medium">{state.email}</span> para
-          entrar al Taller.
-        </p>
-      </div>
-    )
-  }
-
   return (
     <form action={action} className="space-y-3">
-      <input
-        type="email"
-        name="email"
-        placeholder="tu@email.com"
-        required
-        autoComplete="email"
-        className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
-      />
+      <div>
+        <label
+          htmlFor="email"
+          className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5"
+        >
+          Email
+        </label>
+        <input
+          id="email"
+          type="email"
+          name="email"
+          placeholder="tu@email.com"
+          required
+          autoComplete="email"
+          autoFocus
+          className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+        />
+      </div>
+      <div>
+        <label
+          htmlFor="password"
+          className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5"
+        >
+          Contraseña
+        </label>
+        <input
+          id="password"
+          type="password"
+          name="password"
+          placeholder="••••••••"
+          required
+          autoComplete="current-password"
+          className="w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+        />
+      </div>
       <button
         type="submit"
         disabled={pending}
         className="w-full rounded-lg bg-zinc-900 text-white px-4 py-3 text-sm font-medium hover:bg-zinc-800 disabled:opacity-50 transition"
       >
-        {pending ? 'Enviando…' : 'Enviar enlace'}
+        {pending ? 'Entrando…' : 'Entrar'}
       </button>
       {state.status === 'error' && (
         <p className="text-sm text-red-600">{state.message}</p>

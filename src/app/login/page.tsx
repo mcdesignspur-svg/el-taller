@@ -6,8 +6,10 @@ import { getLogoSignedUrl } from '@/lib/branding'
 import { LoginForm } from './login-form'
 
 const ERROR_MESSAGES: Record<string, string> = {
-  no_code: 'El enlace no trae código. Pide uno nuevo.',
-  exchange_failed: 'El enlace expiró o ya se usó. Pide uno nuevo.',
+  // Magic-link / password-reset callback errors. Kept here because Supabase
+  // password-reset emails still go through /auth/callback.
+  no_code: 'El enlace no trae código. Pídele a Miguel uno nuevo.',
+  exchange_failed: 'El enlace expiró o ya se usó. Pídele a Miguel uno nuevo.',
   no_tenant: 'No pude identificar el negocio para este dominio.',
   tenant_not_found: 'El tenant no existe en la base de datos.',
   no_profile: 'Tu cuenta no tiene un perfil asignado todavía.',
@@ -70,7 +72,7 @@ export default async function LoginPage({
         </div>
         <h1 className="text-2xl font-semibold mb-2">Entrar</h1>
         <p className="text-sm text-zinc-500 mb-6">
-          Te mando un enlace por email — sin password.
+          Usa el email y contraseña que te dio Miguel.
         </p>
         {errorMessage && (
           <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
