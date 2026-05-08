@@ -3,6 +3,7 @@ import { getCurrentProfile } from '@/lib/dal'
 import { createServerClient } from '@/lib/supabase/server'
 import { getBrandBrief } from '@/lib/brand-brief'
 import { getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
+import { getLogoSignedUrl } from '@/lib/branding'
 import type { BrandBrief } from '@/lib/types'
 import { BrandForm } from './brand-form'
 
@@ -18,6 +19,7 @@ export default async function BrandPage({
   const { profile } = await getCurrentProfile()
   const supabase = await createServerClient()
   const brief = (await getBrandBrief(supabase, profile.client_id)) ?? ({} as Partial<BrandBrief>)
+  const logoUrl = await getLogoSignedUrl(supabase, brief.logo_url ?? null)
 
   const h = await headers()
   const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
@@ -53,7 +55,7 @@ export default async function BrandPage({
           . Mientras más detalle, más preciso el output.
         </p>
       </div>
-      <BrandForm brief={brief} />
+      <BrandForm brief={brief} logoUrl={logoUrl} />
     </main>
   )
 }

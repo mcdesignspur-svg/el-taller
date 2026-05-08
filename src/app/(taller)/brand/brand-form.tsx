@@ -1,6 +1,6 @@
 'use client'
 
-import { useActionState, useEffect } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import type { BrandBrief } from '@/lib/types'
 import { saveBrandBrief, type BrandFormState } from './actions'
@@ -9,9 +9,10 @@ const initialState: BrandFormState = { status: 'idle' }
 
 type Props = {
   brief: Partial<BrandBrief>
+  logoUrl: string | null
 }
 
-export function BrandForm({ brief }: Props) {
+export function BrandForm({ brief, logoUrl }: Props) {
   const [state, action, pending] = useActionState<BrandFormState, FormData>(
     saveBrandBrief,
     initialState,
@@ -23,7 +24,7 @@ export function BrandForm({ brief }: Props) {
   }, [state])
 
   return (
-    <form action={action} className="space-y-8">
+    <form action={action} className="space-y-8" encType="multipart/form-data">
       <Section
         title="Lo básico"
         hint="Lo mínimo que la AI necesita para entender qué vendes y a quién."
@@ -91,21 +92,23 @@ export function BrandForm({ brief }: Props) {
         />
       </Section>
 
-      <Section title="Estilo visual" hint="Opcional. Útil para statics y dirección visual.">
+      <Section
+        title="Apariencia"
+        hint="Logo y colores se aplican al studio cuando entras. Los colores también guían a la AI para statics."
+      >
+        <LogoField currentLogoUrl={logoUrl} />
         <div className="grid grid-cols-2 gap-3">
-          <Field
+          <ColorField
             label="Color primario"
             name="primary_color"
             defaultValue={brief.primary_color ?? ''}
-            placeholder="Ej: terracotta / #B45A3C"
-            rows={1}
+            placeholder="terracotta / #B45A3C"
           />
-          <Field
+          <ColorField
             label="Color secundario"
             name="secondary_color"
             defaultValue={brief.secondary_color ?? ''}
-            placeholder="Ej: cream / #F5EBDD"
-            rows={1}
+            placeholder="cream / #F5EBDD"
           />
         </div>
         <Field
@@ -143,6 +146,145 @@ export function BrandForm({ brief }: Props) {
         )}
       </div>
     </form>
+  )
+}
+
+// ─── Logo field with file picker + preview + remove control ──────────────────
+
+function LogoField({ currentLogoUrl }: { currentLogoUrl: string | null }) {
+  const [preview, setPreview] = useState<string | null>(currentLogoUrl)
+  const [removed, setRemoved] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function onPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setRemoved(false)
+    const reader = new FileReader()
+    reader.onload = () => setPreview(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
+  function onRemove() {
+    setPreview(null)
+    setRemoved(true)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  return (
+    <div>
+      <label className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5">
+        Logo
+      </label>
+      <div className="flex items-center gap-4">
+        <div className="h-16 w-16 shrink-0 rounded-lg border border-zinc-200 bg-zinc-50 flex items-center justify-center overflow-hidden">
+          {preview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={preview}
+              alt="Logo preview"
+              className="max-h-full max-w-full object-contain"
+            />
+          ) : (
+            <span className="text-[10px] text-zinc-400 uppercase tracking-wider">
+              sin logo
+            </span>
+          )}
+        </div>
+        <div className="flex-1 space-y-1">
+          <input
+            ref={fileRef}
+            type="file"
+            name="logo"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml"
+            onChange={onPick}
+            className="block w-full text-xs text-zinc-700 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-medium file:bg-zinc-100 file:text-zinc-700 hover:file:bg-zinc-200 file:cursor-pointer cursor-pointer"
+          />
+          <p className="text-[11px] text-zinc-500">
+            PNG, JPG, WebP o SVG. Máximo 2MB. Se renderiza en el header del studio.
+          </p>
+          {currentLogoUrl && !removed && (
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-[11px] text-red-600 hover:text-red-700 underline"
+            >
+              Quitar logo actual
+            </button>
+          )}
+        </div>
+      </div>
+      {/* Hidden field to signal removal to the server action. */}
+      <input type="hidden" name="remove_logo" value={removed ? '1' : ''} />
+    </div>
+  )
+}
+
+// ─── Color field with native picker synced to free-form text input ───────────
+
+function extractHexFromText(text: string): string {
+  const m = text.match(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/)
+  if (!m) return '#000000'
+  let hex = m[1]
+  if (hex.length === 3) {
+    hex = hex
+      .split('')
+      .map((c) => c + c)
+      .join('')
+  }
+  return `#${hex.toLowerCase()}`
+}
+
+function ColorField({
+  label,
+  name,
+  defaultValue,
+  placeholder,
+}: {
+  label: string
+  name: string
+  defaultValue: string
+  placeholder?: string
+}) {
+  const [text, setText] = useState(defaultValue)
+  const hex = extractHexFromText(text)
+
+  function onPickerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const newHex = e.target.value
+    // If text already has a hex, replace it. Otherwise append.
+    if (/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/.test(text)) {
+      setText(text.replace(/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/, newHex))
+    } else {
+      setText(text ? `${text} / ${newHex}` : newHex)
+    }
+  }
+
+  return (
+    <div>
+      <label
+        htmlFor={name}
+        className="block text-xs uppercase tracking-wider text-zinc-500 mb-1.5"
+      >
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={hex}
+          onChange={onPickerChange}
+          className="h-9 w-9 shrink-0 rounded-md border border-zinc-200 cursor-pointer bg-white"
+          aria-label={`${label} picker`}
+        />
+        <input
+          id={name}
+          name={name}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={placeholder}
+          className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:border-transparent"
+        />
+      </div>
+    </div>
   )
 }
 
