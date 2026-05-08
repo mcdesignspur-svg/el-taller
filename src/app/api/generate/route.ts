@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getCurrentProfile } from '@/lib/dal'
 import { createServerClient } from '@/lib/supabase/server'
-import { anthropic, DEFAULT_MODEL, logUsage } from '@/lib/anthropic'
+import { createMessagesClient, DEFAULT_MODEL, logUsage } from '@/lib/anthropic'
 import { buildSystemPrompt, getBrandBrief } from '@/lib/brand-brief'
 import { getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
 import { headers } from 'next/headers'
@@ -73,7 +73,8 @@ export async function POST(request: Request) {
 
   let response
   try {
-    response = await anthropic.messages.create({
+    const messagesClient = await createMessagesClient(profile.client_id)
+    response = await messagesClient.messages.create({
       model: DEFAULT_MODEL,
       max_tokens: 2048,
       system: systemPrompt,
@@ -87,7 +88,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 502 })
   }
 
-  const textBlock = response.content.find((b) => b.type === 'text')
+  const textBlock = response.content.find(
+    (b: { type: string }) => b.type === 'text',
+  )
   if (!textBlock || textBlock.type !== 'text') {
     return NextResponse.json({ error: 'AI no devolvió texto' }, { status: 500 })
   }
