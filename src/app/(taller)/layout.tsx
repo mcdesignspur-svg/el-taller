@@ -91,6 +91,12 @@ export default async function TallerLayout({
           >
             Marca
           </Link>
+          <Link
+            href="/help"
+            className="text-zinc-600 hover:[color:var(--brand-accent)] transition-colors hidden sm:inline"
+          >
+            Ayuda
+          </Link>
           <span className="text-zinc-300">·</span>
           <span className="text-xs text-zinc-500 hidden sm:inline">{user.email}</span>
           <form action={signOut}>

@@ -26,7 +26,7 @@ export default async function StudioPage() {
   const showBriefBanner = !isBriefMeaningful(brief)
 
   return (
-    <main className="min-h-[calc(100vh-65px)] flex items-center justify-center px-6 py-12">
+    <main className="min-h-[calc(100vh-65px)] flex justify-center px-6 py-10 sm:py-16">
       <div className="w-full max-w-2xl space-y-4">
         {showBriefBanner && (
           <Link

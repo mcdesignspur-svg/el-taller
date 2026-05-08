@@ -1,7 +1,8 @@
 import Link from 'next/link'
+import { Sparkles } from 'lucide-react'
 import { getCurrentProfile } from '@/lib/dal'
 import { getActiveSupabase } from '@/lib/supabase/server'
-import type { ContentItem } from '@/lib/types'
+import type { ContentItem, ContentStatus, ContentType } from '@/lib/types'
 import { ListView } from './list-view'
 import { MonthView } from './month-view'
 
@@ -49,6 +50,27 @@ export default async function CalendarPage({
   // Enrich photo_url paths with 24h signed URLs so the editor can render them.
   const rows = await enrichWithSignedPhotos(supabase, (data as Row[]) ?? [])
 
+  // Today + week highlights — separate small query so it shows regardless of
+  // the current view's month filter.
+  const today = todayInPR()
+  const { weekStart, weekEnd } = weekRange(today)
+  const { data: weekData } = await supabase
+    .from('content_items')
+    .select('id, scheduled_date, type, status')
+    .eq('client_id', profile.client_id)
+    .gte('scheduled_date', weekStart)
+    .lte('scheduled_date', weekEnd)
+
+  const weekItems =
+    (weekData as Array<{
+      id: string
+      scheduled_date: string
+      type: ContentType
+      status: ContentStatus
+    }> | null) ?? []
+  const todayCount = weekItems.filter((i) => i.scheduled_date === today).length
+  const weekCount = weekItems.length
+
   return (
     <main className="max-w-5xl mx-auto p-8">
       <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
@@ -63,6 +85,32 @@ export default async function CalendarPage({
           </Link>
         </div>
       </div>
+
+      {weekCount > 0 && (
+        <div className="mb-6 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 flex items-center gap-3 flex-wrap">
+          <Sparkles size={16} className="text-zinc-500 shrink-0" />
+          <p className="text-sm text-zinc-700 flex-1 min-w-0">
+            {todayCount > 0 ? (
+              <>
+                <span className="font-medium text-zinc-900">
+                  Hoy tienes {todayCount} {todayCount === 1 ? 'post' : 'posts'}
+                </span>{' '}
+                programado{todayCount === 1 ? '' : 's'} —{' '}
+                <span className="text-zinc-500">
+                  {weekCount} en total esta semana.
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-zinc-900">
+                  {weekCount} {weekCount === 1 ? 'post' : 'posts'} esta semana
+                </span>
+                <span className="text-zinc-500"> · nada para hoy.</span>
+              </>
+            )}
+          </p>
+        </div>
+      )}
 
       {error ? (
         <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -107,6 +155,33 @@ function currentMonthKey(): string {
     month: '2-digit',
   })
   return fmt.format(new Date()).slice(0, 7)
+}
+
+function todayInPR(): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Puerto_Rico',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  return fmt.format(new Date())
+}
+
+function weekRange(todayIso: string): { weekStart: string; weekEnd: string } {
+  // Sunday-anchored week — matches the month-view grid and most PR retail
+  // weekly cycles. Build from the ISO date so DST/timezone math doesn't drift.
+  const [y, m, d] = todayIso.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  const dow = date.getDay() // 0 = Sun
+  const start = new Date(date)
+  start.setDate(date.getDate() - dow)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+      d.getDate(),
+    ).padStart(2, '0')}`
+  return { weekStart: fmt(start), weekEnd: fmt(end) }
 }
 
 function isoDate(y: number, mIndex: number, d: number): string {

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, X } from 'lucide-react'
+import { Check, Copy, Plus, X } from 'lucide-react'
 import { toast } from 'sonner'
 import type {
   ContentOutput,
@@ -12,6 +12,17 @@ import type {
 } from '@/lib/types'
 import { updateItemOutput } from '@/app/(taller)/calendar/actions'
 import { CopyButton } from './copy-button'
+
+/**
+ * Build a "ready to paste into Instagram" string: caption + blank line +
+ * hashtags. Works for any output type — IG only takes one caption per post,
+ * so this is the same shape across reel/carousel/static.
+ */
+function buildIgPaste(output: ContentOutput): string {
+  const caption = (output.caption_medium ?? '').trim()
+  const hashtags = (output.hashtags ?? []).filter(Boolean).join(' ')
+  return [caption, hashtags].filter(Boolean).join('\n\n')
+}
 
 type Props = {
   itemId: string
@@ -58,6 +69,8 @@ export function OutputEditor({ itemId, initialOutput, photoUrl }: Props) {
         </div>
       )}
 
+      <CopyForInstagram output={output} />
+
       {output.type === 'reel' && (
         <ReelEditor output={output} onChange={setOutput} />
       )}
@@ -83,6 +96,41 @@ export function OutputEditor({ itemId, initialOutput, photoUrl }: Props) {
         {error && <span className="text-sm text-red-600">{error}</span>}
       </div>
     </div>
+  )
+}
+
+// =============================================================================
+// Copy-for-Instagram action
+// =============================================================================
+
+function CopyForInstagram({ output }: { output: ContentOutput }) {
+  const [copied, setCopied] = useState(false)
+  const text = buildIgPaste(output)
+
+  async function handleCopy() {
+    if (!text) return
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      toast.success('Caption + hashtags copiados')
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error('No pude copiar — intenta los botones individuales')
+    }
+  }
+
+  if (!text) return null
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      style={{ backgroundColor: 'var(--brand-accent, #18181b)' }}
+      className="w-full inline-flex items-center justify-center gap-2 rounded-lg text-white px-4 py-2.5 text-sm font-medium hover:opacity-90 transition"
+    >
+      {copied ? <Check size={14} /> : <Copy size={14} />}
+      {copied ? 'Copiado · Pega en Instagram' : 'Copiar para Instagram'}
+    </button>
   )
 }
 

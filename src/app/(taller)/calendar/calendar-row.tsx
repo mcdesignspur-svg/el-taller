@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
+import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import type { ContentItem, ContentStatus } from '@/lib/types'
 import { OutputEditor } from '@/components/output-editor'
@@ -134,13 +135,18 @@ export function CalendarRow({ item }: Props) {
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white">
-      <div className="px-4 py-3 flex items-center gap-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-zinc-50/60 transition rounded-lg"
+        aria-expanded={open}
+      >
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
+          <div className="flex items-center gap-x-2 gap-y-1 flex-wrap mb-1">
             <span className="text-xs uppercase tracking-wider text-zinc-500">
               {formatDate(item.scheduled_date)}
             </span>
-            <span className="text-zinc-300">·</span>
+            <span className="text-zinc-300 hidden sm:inline">·</span>
             <span className="text-xs text-zinc-600">{TYPE_LABELS[item.type]}</span>
             <span
               className={`text-xs px-2 py-0.5 rounded-full ${
@@ -154,14 +160,14 @@ export function CalendarRow({ item }: Props) {
             {item.idea ?? <span className="text-zinc-400">Sin idea</span>}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="text-xs text-zinc-500 hover:text-zinc-900 px-2 py-1"
-        >
+        <span className="inline-flex items-center gap-1 text-xs text-zinc-500 px-2 py-1 shrink-0">
           {open ? 'Cerrar' : 'Editar'}
-        </button>
-      </div>
+          <ChevronDown
+            size={14}
+            className={`transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </span>
+      </button>
 
       {open && (
         <div className="border-t border-zinc-200 px-4 py-4 space-y-4 bg-zinc-50/50">

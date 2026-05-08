@@ -1,6 +1,8 @@
 import { Suspense } from 'react'
 import { headers } from 'next/headers'
 import { resolveSlugFromHost, getTenantBySlug } from '@/lib/tenant'
+import { createAdminClient } from '@/lib/supabase/server'
+import { getLogoSignedUrl } from '@/lib/branding'
 import { LoginForm } from './login-form'
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -23,13 +25,47 @@ export default async function LoginPage({
   const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
   const tenant = slug ? await getTenantBySlug(slug) : null
 
+  // Pull the tenant's logo so the login screen feels like their studio,
+  // not a generic El Taller page. Anonymous user — has to use admin client
+  // to read brand_briefs and to sign the storage URL.
+  let logoUrl: string | null = null
+  if (tenant) {
+    try {
+      const admin = createAdminClient()
+      const { data: brief } = await admin
+        .from('brand_briefs')
+        .select('logo_url')
+        .eq('client_id', tenant.id)
+        .maybeSingle()
+      logoUrl = await getLogoSignedUrl(admin, brief?.logo_url ?? null)
+    } catch {
+      logoUrl = null
+    }
+  }
+
   return (
     <main className="flex flex-1 items-center justify-center p-8">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <p className="text-xs uppercase tracking-widest text-zinc-500">El Taller</p>
-          {tenant && (
-            <p className="text-lg font-medium mt-1">{tenant.name}</p>
+          {logoUrl ? (
+            <div className="flex flex-col items-center gap-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoUrl}
+                alt={tenant?.name ?? 'Logo'}
+                className="h-12 w-auto max-w-[200px] object-contain"
+              />
+              <p className="text-[10px] uppercase tracking-widest text-zinc-400">
+                El Taller
+              </p>
+            </div>
+          ) : (
+            <>
+              <p className="text-xs uppercase tracking-widest text-zinc-500">El Taller</p>
+              {tenant && (
+                <p className="text-lg font-medium mt-1">{tenant.name}</p>
+              )}
+            </>
           )}
         </div>
         <h1 className="text-2xl font-semibold mb-2">Entrar</h1>
