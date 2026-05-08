@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getCurrentProfile } from '@/lib/dal'
-import { createServerClient } from '@/lib/supabase/server'
+import { getActiveSupabase } from '@/lib/supabase/server'
 import type { ContentItem } from '@/lib/types'
 import { ListView } from './list-view'
 import { MonthView } from './month-view'
@@ -19,16 +19,19 @@ export default async function CalendarPage({
 }: {
   searchParams: SearchParams
 }) {
-  await getCurrentProfile()
+  const { profile } = await getCurrentProfile()
 
   const params = await searchParams
   const view: 'list' | 'month' = params.view === 'month' ? 'month' : 'list'
   const monthParam = params.month ?? currentMonthKey()
 
-  const supabase = await createServerClient()
+  const supabase = await getActiveSupabase(profile)
+  // Explicit client_id filter is mandatory: when super admin is impersonating,
+  // service-role bypasses RLS, so we scope manually.
   const query = supabase
     .from('content_items')
     .select('id, scheduled_date, type, idea, output, status, photo_url')
+    .eq('client_id', profile.client_id)
 
   if (view === 'month') {
     const [y, m] = monthParam.split('-').map(Number)
@@ -117,7 +120,7 @@ function isoDate(y: number, mIndex: number, d: number): string {
 }
 
 async function enrichWithSignedPhotos(
-  supabase: Awaited<ReturnType<typeof createServerClient>>,
+  supabase: Awaited<ReturnType<typeof getActiveSupabase>>,
   rows: Row[],
 ): Promise<Row[]> {
   const paths = rows

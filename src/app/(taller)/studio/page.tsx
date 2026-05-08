@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getCurrentProfile } from '@/lib/dal'
-import { createServerClient } from '@/lib/supabase/server'
+import { getActiveSupabase } from '@/lib/supabase/server'
 import { getBrandBrief, isBriefMeaningful } from '@/lib/brand-brief'
 import { StudioForm } from './studio-form'
 
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function StudioPage() {
   const { profile } = await getCurrentProfile()
-  const supabase = await createServerClient()
+  const supabase = await getActiveSupabase(profile)
   const brief = await getBrandBrief(supabase, profile.client_id)
 
   // First-time onboarding: if the user has no brand brief AND no content
@@ -18,6 +18,7 @@ export default async function StudioPage() {
     const { count } = await supabase
       .from('content_items')
       .select('id', { count: 'exact', head: true })
+      .eq('client_id', profile.client_id)
       .limit(1)
     if ((count ?? 0) === 0) redirect('/brand?welcome=1')
   }

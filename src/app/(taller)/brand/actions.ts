@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import { getCurrentProfile } from '@/lib/dal'
-import { createServerClient } from '@/lib/supabase/server'
+import { getActiveSupabase } from '@/lib/supabase/server'
 
 const Schema = z.object({
   products: z.string().optional(),
@@ -49,7 +49,7 @@ export async function saveBrandBrief(
     return { status: 'error', message: 'Datos inválidos' }
   }
 
-  const supabase = await createServerClient()
+  const supabase = await getActiveSupabase(profile)
 
   // Normalize empty strings to null so isBriefMeaningful logic works.
   const { remove_logo, ...textFields } = parsed.data
@@ -99,10 +99,15 @@ export async function saveBrandBrief(
     payload.logo_url = null
   }
 
+  // Ensure a brand_briefs row exists for this tenant. RLS-permissive in
+  // normal use because the row is created on tenant onboarding; for super
+  // admin impersonation we use service-role and explicit client_id filter.
   const { error } = await supabase
     .from('brand_briefs')
-    .update({ ...payload, updated_at: new Date().toISOString() })
-    .eq('client_id', profile.client_id)
+    .upsert(
+      { client_id: profile.client_id, ...payload, updated_at: new Date().toISOString() },
+      { onConflict: 'client_id' },
+    )
 
   if (error) return { status: 'error', message: error.message }
 

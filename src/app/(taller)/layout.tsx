@@ -1,11 +1,12 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
-import { resolveSlugFromHost, getTenantBySlug } from '@/lib/tenant'
+import { resolveSlugFromHost, getTenantBySlug, getTenantById } from '@/lib/tenant'
 import { getCurrentProfile } from '@/lib/dal'
 import { signOut } from '@/lib/auth-actions'
-import { createServerClient } from '@/lib/supabase/server'
+import { getActiveSupabase } from '@/lib/supabase/server'
 import { getBrandBrief } from '@/lib/brand-brief'
 import { extractHexColor, getLogoSignedUrl } from '@/lib/branding'
+import { ImpersonationBanner } from './impersonation-banner'
 
 // Shared layout for /studio and /calendar.
 // Enforces auth (redirect → /login) and renders the tenant chrome.
@@ -17,11 +18,18 @@ export default async function TallerLayout({
 }) {
   const { user, profile } = await getCurrentProfile()
 
+  // When impersonating, the URL host still resolves to the super admin's
+  // own tenant (e.g. studio.mcdesignspr.com → demo). Override with the
+  // active client_id so chrome reflects the tenant being viewed.
   const h = await headers()
-  const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
-  const tenant = slug ? await getTenantBySlug(slug) : null
+  const tenant = profile.is_synthetic
+    ? await getTenantById(profile.client_id)
+    : await (async () => {
+        const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
+        return slug ? await getTenantBySlug(slug) : null
+      })()
 
-  const supabase = await createServerClient()
+  const supabase = await getActiveSupabase(profile)
   const brief = await getBrandBrief(supabase, profile.client_id)
 
   // Brand colors and logo come from brand_briefs. The free-form text fields
@@ -39,6 +47,9 @@ export default async function TallerLayout({
         ['--brand-secondary' as string]: brandSecondary,
       }}
     >
+      {profile.is_synthetic && (
+        <ImpersonationBanner tenantName={tenant?.name ?? profile.client_id} />
+      )}
       <header className="border-b border-zinc-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
           {logoUrl ? (

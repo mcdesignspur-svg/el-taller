@@ -52,3 +52,23 @@ export function createAdminClient() {
     },
   )
 }
+
+/**
+ * Returns the right tenant-scoped Supabase client for the current request.
+ *
+ * - For normal users (single profile, no impersonation): the cookie-bound
+ *   anon-key client. RLS scopes them to their own tenant via current_client_id().
+ * - For super admins acting on a tenant they don't own (synthetic profile):
+ *   service-role client. RLS would otherwise return their primary tenant
+ *   instead of the impersonated one.
+ *
+ * Pass a `Profile` (from getCurrentProfile) so this function knows whether
+ * to switch clients. Caller must remember to filter queries by
+ * `profile.client_id` since service-role bypasses RLS.
+ */
+export async function getActiveSupabase(
+  profile: { is_synthetic: boolean },
+) {
+  if (profile.is_synthetic) return createAdminClient()
+  return createServerClient()
+}

@@ -1,8 +1,8 @@
 import { headers } from 'next/headers'
 import { getCurrentProfile } from '@/lib/dal'
-import { createServerClient } from '@/lib/supabase/server'
+import { getActiveSupabase } from '@/lib/supabase/server'
 import { getBrandBrief } from '@/lib/brand-brief'
-import { getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
+import { getTenantById, getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
 import { getLogoSignedUrl } from '@/lib/branding'
 import type { BrandBrief } from '@/lib/types'
 import { BrandForm } from './brand-form'
@@ -17,13 +17,17 @@ export default async function BrandPage({
   searchParams: SearchParams
 }) {
   const { profile } = await getCurrentProfile()
-  const supabase = await createServerClient()
+  const supabase = await getActiveSupabase(profile)
   const brief = (await getBrandBrief(supabase, profile.client_id)) ?? ({} as Partial<BrandBrief>)
   const logoUrl = await getLogoSignedUrl(supabase, brief.logo_url ?? null)
 
   const h = await headers()
-  const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
-  const tenant = slug ? await getTenantBySlug(slug) : null
+  const tenant = profile.is_synthetic
+    ? await getTenantById(profile.client_id)
+    : await (async () => {
+        const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
+        return slug ? await getTenantBySlug(slug) : null
+      })()
 
   const params = await searchParams
   const isWelcome = params.welcome === '1'

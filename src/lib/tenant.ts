@@ -1,5 +1,5 @@
 import { cache } from 'react'
-import { createServerClient } from '@/lib/supabase/server'
+import { createAdminClient, createServerClient } from '@/lib/supabase/server'
 
 export type Tenant = {
   id: string
@@ -43,3 +43,33 @@ export const getTenantBySlug = cache(async (slug: string): Promise<Tenant | null
   if (error || !data) return null
   return data as Tenant
 })
+
+/**
+ * Fetch a tenant by id, bypassing RLS. Used when a super admin is acting
+ * on a tenant they don't have a profile for (impersonation flow).
+ */
+export const getTenantById = cache(async (id: string): Promise<Tenant | null> => {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, slug, name, domain, plan_tier, is_active')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error || !data) return null
+  return data as Tenant
+})
+
+/**
+ * List all active tenants. Service-role read — only for admin views.
+ */
+export async function listAllTenants(): Promise<Tenant[]> {
+  const supabase = createAdminClient()
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, slug, name, domain, plan_tier, is_active')
+    .eq('is_active', true)
+    .order('name')
+  if (error || !data) return []
+  return data as Tenant[]
+}

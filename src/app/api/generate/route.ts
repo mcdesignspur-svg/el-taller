@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getCurrentProfile } from '@/lib/dal'
-import { createServerClient } from '@/lib/supabase/server'
+import { getActiveSupabase } from '@/lib/supabase/server'
 import { createMessagesClient, DEFAULT_MODEL, logUsage } from '@/lib/anthropic'
 import { buildSystemPrompt, getBrandBrief } from '@/lib/brand-brief'
-import { getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
+import { getTenantById, getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
 import { headers } from 'next/headers'
 
 const Schema = z.object({
@@ -25,6 +25,7 @@ const Schema = z.object({
 
 export async function POST(request: Request) {
   const { user, profile } = await getCurrentProfile()
+  const isImpersonating = profile.is_synthetic
 
   const body = await request.json().catch(() => null)
   const parsed = Schema.safeParse(body)
@@ -61,12 +62,16 @@ export async function POST(request: Request) {
   })
 
   // Load brand brief + tenant name to build a tenant-aware system prompt.
-  const supabase = await createServerClient()
+  const supabase = await getActiveSupabase(profile)
   const brief = await getBrandBrief(supabase, profile.client_id)
 
   const h = await headers()
-  const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
-  const tenant = slug ? await getTenantBySlug(slug) : null
+  const tenant = isImpersonating
+    ? await getTenantById(profile.client_id)
+    : await (async () => {
+        const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
+        return slug ? await getTenantBySlug(slug) : null
+      })()
   const clientName = tenant?.name ?? 'el negocio'
 
   const systemPrompt = buildSystemPrompt(brief, clientName, type)
@@ -123,11 +128,14 @@ export async function POST(request: Request) {
   let dbError: { message: string } | null = null
 
   if (update_id) {
-    // Verify the item belongs to this tenant before touching it.
+    // Verify the item belongs to this tenant before touching it. Explicit
+    // client_id filter is mandatory under super-admin impersonation since
+    // RLS is bypassed.
     const { data: existing, error: fetchError } = await supabase
       .from('content_items')
       .select('id, photo_url')
       .eq('id', update_id)
+      .eq('client_id', profile.client_id)
       .maybeSingle()
     if (fetchError || !existing) {
       return NextResponse.json(
@@ -146,6 +154,7 @@ export async function POST(request: Request) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', update_id)
+      .eq('client_id', profile.client_id)
       .select('id, scheduled_date, type, idea, output, status, photo_url')
       .single()
     item = updated.data
