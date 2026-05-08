@@ -9,7 +9,10 @@ import {
   Sparkles,
 } from 'lucide-react'
 
-export const dynamic = 'force-static'
+// Must render per-request: lives inside the (taller) layout, which calls
+// getCurrentProfile(). Static rendering would bake the unauthenticated
+// redirect into the HTML and force a re-login for every visitor.
+export const dynamic = 'force-dynamic'
 
 export default function HelpPage() {
   return (
