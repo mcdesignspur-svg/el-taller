@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { headers } from 'next/headers'
-import { resolveSlugFromHost, getTenantBySlug, getTenantById } from '@/lib/tenant'
+import { getTenantById } from '@/lib/tenant'
 import { getCurrentProfile } from '@/lib/dal'
 import { signOut } from '@/lib/auth-actions'
 import { getActiveSupabase } from '@/lib/supabase/server'
@@ -18,16 +17,13 @@ export default async function TallerLayout({
 }) {
   const { user, profile } = await getCurrentProfile()
 
-  // When impersonating, the URL host still resolves to the super admin's
-  // own tenant (e.g. studio.mcdesignspr.com → demo). Override with the
-  // active client_id so chrome reflects the tenant being viewed.
-  const h = await headers()
-  const tenant = profile.is_synthetic
-    ? await getTenantById(profile.client_id)
-    : await (async () => {
-        const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
-        return slug ? await getTenantBySlug(slug) : null
-      })()
+  // Tenant always comes from the user's profile, not the URL host. A user can
+  // legitimately access their studio from a shared/super-admin domain (e.g.
+  // BE Boutique entering through studio.mcdesignspr.com before her own
+  // subdomain is provisioned), and the chrome must follow the user, not the
+  // domain. Super-admin impersonation already sets profile.client_id via the
+  // synthetic profile path, so this single resolution covers all cases.
+  const tenant = await getTenantById(profile.client_id)
 
   const supabase = await getActiveSupabase(profile)
   const brief = await getBrandBrief(supabase, profile.client_id)

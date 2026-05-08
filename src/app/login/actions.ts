@@ -43,32 +43,54 @@ export async function signIn(
 
   // Bootstrap the profile on first sign-in — passwords are set in the Supabase
   // dashboard, so the auth.users row may exist without a matching profile yet.
-  // Same logic as /auth/callback for the magic-link flow.
-  const h = await headers()
-  const slug = resolveSlugFromHost(h.get('host'))
-  if (slug) {
-    const admin = createAdminClient()
-    const { data: tenant } = await admin
-      .from('clients')
-      .select('id')
-      .eq('slug', slug)
-      .maybeSingle()
+  //
+  // Resolution order for the client_id:
+  //   1. user_metadata.client_id — set by Miguel on the auth user (preferred,
+  //      works regardless of which domain the user enters from).
+  //   2. host-derived slug — fallback for tenants whose users always log in
+  //      from their own subdomain. Wrong-domain logins can mis-bootstrap, so
+  //      metadata is the safer path.
+  const admin = createAdminClient()
+  const { data: existing } = await admin
+    .from('profiles')
+    .select('id')
+    .eq('id', data.user.id)
+    .maybeSingle()
 
-    if (tenant) {
-      const { data: existing } = await admin
-        .from('profiles')
+  if (!existing) {
+    const metaClientId =
+      (data.user.user_metadata as { client_id?: string } | null)?.client_id ?? null
+
+    let clientId: string | null = null
+    if (metaClientId) {
+      const { data: tenant } = await admin
+        .from('clients')
         .select('id')
-        .eq('id', data.user.id)
+        .eq('id', metaClientId)
         .maybeSingle()
+      if (tenant) clientId = tenant.id
+    }
 
-      if (!existing) {
-        await admin.from('profiles').insert({
-          id: data.user.id,
-          client_id: tenant.id,
-          role: 'owner',
-          email: data.user.email,
-        })
+    if (!clientId) {
+      const h = await headers()
+      const slug = resolveSlugFromHost(h.get('host'))
+      if (slug) {
+        const { data: tenant } = await admin
+          .from('clients')
+          .select('id')
+          .eq('slug', slug)
+          .maybeSingle()
+        if (tenant) clientId = tenant.id
       }
+    }
+
+    if (clientId) {
+      await admin.from('profiles').insert({
+        id: data.user.id,
+        client_id: clientId,
+        role: 'owner',
+        email: data.user.email,
+      })
     }
   }
 

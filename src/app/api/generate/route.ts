@@ -4,8 +4,7 @@ import { getCurrentProfile } from '@/lib/dal'
 import { getActiveSupabase } from '@/lib/supabase/server'
 import { createMessagesClient, DEFAULT_MODEL, logUsage } from '@/lib/anthropic'
 import { buildSystemPrompt, getBrandBrief } from '@/lib/brand-brief'
-import { getTenantById, getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
-import { headers } from 'next/headers'
+import { getTenantById } from '@/lib/tenant'
 
 const Schema = z.object({
   scheduled_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -25,7 +24,6 @@ const Schema = z.object({
 
 export async function POST(request: Request) {
   const { user, profile } = await getCurrentProfile()
-  const isImpersonating = profile.is_synthetic
 
   const body = await request.json().catch(() => null)
   const parsed = Schema.safeParse(body)
@@ -62,16 +60,12 @@ export async function POST(request: Request) {
   })
 
   // Load brand brief + tenant name to build a tenant-aware system prompt.
+  // Tenant always follows profile.client_id — host-based resolution doesn't
+  // belong here because the user might be on a different domain than their
+  // own tenant's (e.g. before subdomain provisioning).
   const supabase = await getActiveSupabase(profile)
   const brief = await getBrandBrief(supabase, profile.client_id)
-
-  const h = await headers()
-  const tenant = isImpersonating
-    ? await getTenantById(profile.client_id)
-    : await (async () => {
-        const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
-        return slug ? await getTenantBySlug(slug) : null
-      })()
+  const tenant = await getTenantById(profile.client_id)
   const clientName = tenant?.name ?? 'el negocio'
 
   const systemPrompt = buildSystemPrompt(brief, clientName, type)

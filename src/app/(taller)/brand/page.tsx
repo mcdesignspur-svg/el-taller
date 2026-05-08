@@ -1,9 +1,8 @@
-import { headers } from 'next/headers'
 import { CheckCircle2 } from 'lucide-react'
 import { getCurrentProfile } from '@/lib/dal'
 import { getActiveSupabase } from '@/lib/supabase/server'
 import { getBrandBrief, isBriefMeaningful } from '@/lib/brand-brief'
-import { getTenantById, getTenantBySlug, resolveSlugFromHost } from '@/lib/tenant'
+import { getTenantById } from '@/lib/tenant'
 import { getLogoSignedUrl } from '@/lib/branding'
 import type { BrandBrief } from '@/lib/types'
 import { BrandForm } from './brand-form'
@@ -58,13 +57,8 @@ export default async function BrandPage({
   const brief = (await getBrandBrief(supabase, profile.client_id)) ?? ({} as Partial<BrandBrief>)
   const logoUrl = await getLogoSignedUrl(supabase, brief.logo_url ?? null)
 
-  const h = await headers()
-  const tenant = profile.is_synthetic
-    ? await getTenantById(profile.client_id)
-    : await (async () => {
-        const slug = h.get('x-tenant-slug') ?? resolveSlugFromHost(h.get('host'))
-        return slug ? await getTenantBySlug(slug) : null
-      })()
+  // Tenant follows the profile, not the host (see (taller)/layout.tsx).
+  const tenant = await getTenantById(profile.client_id)
 
   const params = await searchParams
   const isWelcome = params.welcome === '1'
