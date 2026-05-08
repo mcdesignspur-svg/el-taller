@@ -12,3 +12,15 @@ body {
   background: #ffffff;
   color: #18181b; /* zinc-900 */
 }
+
+/* iOS Safari auto-zooms when focusing an input whose font-size is <16px.
+   That zoom-in / zoom-out dance on every form field is jarring, so force
+   inputs to render at 16px on small screens while keeping desktop at the
+   designed text-sm size. */
+@media (max-width: 640px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

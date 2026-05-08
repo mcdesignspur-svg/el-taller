@@ -99,7 +99,7 @@ export function BrandForm({ brief, logoUrl }: Props) {
         hint="Logo y colores se aplican al studio cuando entras. Los colores también guían a la AI para statics."
       >
         <LogoField currentLogoUrl={logoUrl} />
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <ColorField
             label="Color primario"
             name="primary_color"

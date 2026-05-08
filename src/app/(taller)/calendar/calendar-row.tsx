@@ -181,13 +181,13 @@ export function CalendarRow({ item }: Props) {
             <p className="text-sm text-zinc-500">Este item no tiene output AI.</p>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-3 border-t border-zinc-200">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 pt-3 border-t border-zinc-200">
             {next && (
               <button
                 type="button"
                 disabled={pending || regenerating}
                 onClick={handleAdvance}
-                className="rounded-lg bg-zinc-900 text-white px-3 py-1.5 text-xs font-medium hover:bg-zinc-800 disabled:opacity-50"
+                className="rounded-lg bg-zinc-900 text-white px-3 py-2 sm:py-1.5 text-xs font-medium hover:bg-zinc-800 disabled:opacity-50"
               >
                 Marcar como {STATUS_LABELS[next].toLowerCase()}
               </button>
@@ -196,7 +196,7 @@ export function CalendarRow({ item }: Props) {
               type="button"
               disabled={pending || regenerating}
               onClick={handleRegenerate}
-              className="rounded-lg border border-zinc-300 text-zinc-800 px-3 py-1.5 text-xs font-medium hover:bg-zinc-100 disabled:opacity-50"
+              className="rounded-lg border border-zinc-300 text-zinc-800 px-3 py-2 sm:py-1.5 text-xs font-medium hover:bg-zinc-100 disabled:opacity-50"
             >
               {regenerating ? 'Regenerando…' : 'Regenerar'}
             </button>
@@ -204,7 +204,7 @@ export function CalendarRow({ item }: Props) {
               type="button"
               disabled={pending || regenerating}
               onClick={handleDelete}
-              className="rounded-lg border border-red-200 text-red-700 px-3 py-1.5 text-xs font-medium hover:bg-red-50 disabled:opacity-50"
+              className="rounded-lg border border-red-200 text-red-700 px-3 py-2 sm:py-1.5 text-xs font-medium hover:bg-red-50 disabled:opacity-50"
             >
               Eliminar
             </button>

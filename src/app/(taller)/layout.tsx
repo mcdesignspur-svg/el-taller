@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { HelpCircle } from 'lucide-react'
 import { getTenantById } from '@/lib/tenant'
 import { getCurrentProfile } from '@/lib/dal'
 import { signOut } from '@/lib/auth-actions'
@@ -46,14 +47,14 @@ export default async function TallerLayout({
       {profile.is_synthetic && (
         <ImpersonationBanner tenantName={tenant?.name ?? profile.client_id} />
       )}
-      <header className="border-b border-zinc-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="border-b border-zinc-200 px-3 sm:px-6 py-3 sm:py-4 flex items-center justify-between gap-2 sm:gap-4">
+        <div className="flex items-center gap-3 min-w-0 shrink">
           {logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={logoUrl}
               alt={tenant?.name ?? 'Logo'}
-              className="h-8 w-auto max-w-[140px] object-contain"
+              className="h-7 sm:h-8 w-auto max-w-[100px] sm:max-w-[140px] object-contain"
             />
           ) : (
             <>
@@ -61,14 +62,14 @@ export default async function TallerLayout({
                 El Taller
               </span>
               {tenant && (
-                <span className="text-base font-semibold text-zinc-900 truncate">
+                <span className="text-sm sm:text-base font-semibold text-zinc-900 truncate">
                   {tenant.name}
                 </span>
               )}
             </>
           )}
         </div>
-        <nav className="flex items-center gap-5 text-sm">
+        <nav className="flex items-center gap-3 sm:gap-5 text-sm shrink-0">
           <Link
             href="/studio"
             className="text-zinc-600 hover:[color:var(--brand-accent)] transition-colors"
@@ -89,12 +90,15 @@ export default async function TallerLayout({
           </Link>
           <Link
             href="/help"
-            className="text-zinc-600 hover:[color:var(--brand-accent)] transition-colors hidden sm:inline"
+            className="text-zinc-600 hover:[color:var(--brand-accent)] transition-colors inline-flex items-center"
+            aria-label="Ayuda"
+            title="Cómo usar El Taller"
           >
-            Ayuda
+            <HelpCircle size={16} className="sm:hidden" />
+            <span className="hidden sm:inline">Ayuda</span>
           </Link>
-          <span className="text-zinc-300">·</span>
-          <span className="text-xs text-zinc-500 hidden sm:inline">{user.email}</span>
+          <span className="text-zinc-300 hidden sm:inline">·</span>
+          <span className="text-xs text-zinc-500 hidden md:inline">{user.email}</span>
           <form action={signOut}>
             <button
               type="submit"

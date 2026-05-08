@@ -72,16 +72,17 @@ export default async function CalendarPage({
   const weekCount = weekItems.length
 
   return (
-    <main className="max-w-5xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-        <h1 className="text-2xl font-semibold">Calendario</h1>
-        <div className="flex items-center gap-3">
+    <main className="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+      <div className="flex items-center justify-between mb-5 sm:mb-6 gap-3 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-semibold">Calendario</h1>
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <ViewToggle active={view} month={monthParam} />
           <Link
             href="/studio"
-            className="text-sm rounded-lg bg-zinc-900 text-white px-4 py-2 font-medium hover:bg-zinc-800"
+            className="text-sm rounded-lg bg-zinc-900 text-white px-3 sm:px-4 py-2 font-medium hover:bg-zinc-800"
           >
-            Crear contenido
+            <span className="sm:hidden">+ Crear</span>
+            <span className="hidden sm:inline">Crear contenido</span>
           </Link>
         </div>
       </div>

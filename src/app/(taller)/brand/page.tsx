@@ -67,7 +67,7 @@ export default async function BrandPage({
   const meaningful = isBriefMeaningful(brief as BrandBrief)
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-12">
+    <main className="max-w-2xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
       {isWelcome && (
         <div className="mb-8 rounded-xl border border-zinc-900 bg-zinc-900 text-white px-5 py-4">
           <p className="text-xs uppercase tracking-widest text-zinc-400 mb-1">

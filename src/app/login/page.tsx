@@ -46,7 +46,7 @@ export default async function LoginPage({
   }
 
   return (
-    <main className="flex flex-1 items-center justify-center p-8">
+    <main className="flex flex-1 items-center justify-center px-4 py-8 sm:p-8">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           {logoUrl ? (
