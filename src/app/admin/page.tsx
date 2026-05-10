@@ -5,6 +5,7 @@ import { signOut } from '@/lib/auth-actions'
 import { getCurrentProfile, ACTING_AS_COOKIE } from '@/lib/dal'
 import { listAllTenants } from '@/lib/tenant'
 import { enterAsTenant } from './actions'
+import { CreateTenantForm } from './create-tenant-form'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,6 +50,8 @@ export default async function AdminPage() {
           Tu propio profile no se mueve — la sesión se etiqueta como super
           admin y se desactiva al cerrar.
         </p>
+
+        <CreateTenantForm />
 
         <div className="rounded-xl border border-zinc-200 divide-y divide-zinc-200 overflow-hidden">
           {tenants.length === 0 && (
